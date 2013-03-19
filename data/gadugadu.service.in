@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=org.freedesktop.Telepathy.ConnectionManager.gadugadu
+Exec=@libexecdir@/telepathy-gadugadu
+

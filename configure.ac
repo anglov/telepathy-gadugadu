@@ -36,6 +36,7 @@ AC_SUBST(LIBGADU_LIBS)
 
 AC_CONFIG_FILES([
 Makefile
+data/Makefile
 src/Makefile
 ])
 AC_OUTPUT
