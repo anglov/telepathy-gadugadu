@@ -160,20 +160,7 @@ gadu_presence_parse (gint status, const gchar *descr)
 	gadu_status = map_gg_status_to_gadu (status);
 	
 	if (GG_S_D (status) && descr) {
-		gchar *descr_utf8 = NULL;
-		
-		descr_utf8 = g_convert_with_fallback (descr,
-				     		   -1,
-						   "UTF-8",
-						   "CP1250",
-						   "?",
-						   NULL,
-						   NULL,
-						   NULL);
-	
-		presence = gadu_presence_new (gadu_status, descr_utf8);
-		
-		g_free (descr_utf8);
+		presence = gadu_presence_new (gadu_status, descr);
 	} else {
 		presence = gadu_presence_new (gadu_status, NULL);
 	}
@@ -241,28 +228,16 @@ emit_self_presence_update (GaduConnection *self)
 	
 	if (presence->message) {
 		gchar *message_truncated = NULL;
-		gchar *message_truncated_cp1250 = NULL;
 		
 		message_truncated = g_strndup (presence->message, get_maximum_status_message_length_cb (G_OBJECT (self)));
 		
-		message_truncated_cp1250 = g_convert_with_fallback (message_truncated,
-				     		   -1,
-						   "CP1250",
-						   "UTF-8",
-						   "?",
-						   NULL,
-						   NULL,
-						   NULL);
-		
-		if (gg_change_status_descr (self->session, gg_status, message_truncated_cp1250) < 0) {
+		if (gg_change_status_descr (self->session, gg_status, message_truncated) < 0) {
 			g_message ("Failed to set own status");
 			g_free (message_truncated);
-			g_free (message_truncated_cp1250);
 			return FALSE;
 		}
 		
 		g_free (message_truncated);
-		g_free (message_truncated_cp1250);
 	} else {
 		if (gg_change_status (self->session, gg_status) < 0) {
 			g_message ("Failed to set own status");

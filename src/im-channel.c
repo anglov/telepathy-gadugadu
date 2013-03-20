@@ -39,7 +39,7 @@ send_message (GObject *object,
 	TpBaseChannel *base = TP_BASE_CHANNEL (self);
 	TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
 	GaduConnection *conn = GADU_CONNECTION (base_conn);
-	gchar *msg = NULL, *msg_cp1250 = NULL;
+	gchar *msg = NULL;
 	
 	TpHandle target = tp_base_channel_get_target_handle (base);
 	TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base_conn, TP_HANDLE_TYPE_CONTACT);
@@ -47,16 +47,8 @@ send_message (GObject *object,
 	uin_t uin = (uin_t) atoi (id);
 
 	msg = tp_message_to_text (message, NULL);
-	msg_cp1250 = g_convert_with_fallback (msg,
-				     		   -1,
-						   "CP1250",
-						   "UTF-8",
-						   "?",
-						   NULL,
-						   NULL,
-						   NULL);
 
-	gg_send_message (conn->session, GG_CLASS_CHAT, uin, msg_cp1250);
+	gg_send_message (conn->session, GG_CLASS_CHAT, uin, msg);
 	
 	tp_message_mixin_sent (object,
 			       message,
@@ -65,7 +57,6 @@ send_message (GObject *object,
 			       NULL);
 	
 	g_free (msg);
-	g_free (msg_cp1250);
 }
 
 void

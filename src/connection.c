@@ -273,6 +273,10 @@ gadu_listener_cb (GIOChannel *source, GIOCondition cond, gpointer data)
 					e->event.notify[i].status);
 			}
 			break;
+		case GG_EVENT_USERLIST100_REPLY:
+			if (e->event.userlist100_reply.type == GG_USERLIST100_REPLY_LIST)
+				g_signal_emit (self, signals[SIGNAL_USERLIST_RECEIVED], 0, e);
+			break;
 		case GG_EVENT_USERLIST:
 			if (e->event.userlist.type == GG_USERLIST_GET_REPLY)
 				g_signal_emit (self, signals[SIGNAL_USERLIST_RECEIVED], 0, e);
@@ -346,6 +350,7 @@ start_connecting (TpBaseConnection *conn,
 	login_params.password = self->priv->password;
 	login_params.async = 1;
 	login_params.status = GG_STATUS_AVAIL;
+	login_params.encoding = GG_ENCODING_UTF8;
 	
 	g_message ("Connecting: uin=%d, password=%s", login_params.uin, login_params.password);
 	

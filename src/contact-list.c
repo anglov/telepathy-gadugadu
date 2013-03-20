@@ -134,18 +134,12 @@ userlist_received_cb (GaduConnection *conn, struct gg_event *evt, DownloadAsyncC
       						TP_BASE_CONNECTION (conn),
       						TP_HANDLE_TYPE_CONTACT);
       	GaduContactListPrivate *priv = ctx->self->priv;
+      	const gchar *userlist = NULL;
       	TpHandle handle;
 
 	g_signal_handler_disconnect (conn, ctx->handler_id);
 
-	gchar *userlist = g_convert_with_fallback (evt->event.userlist.reply,
-				     		   -1,
-						   "UTF-8",
-						   "CP1250",
-						   "?",
-						   NULL,
-						   NULL,
-						   NULL);
+	userlist = evt->event.userlist100_reply.reply;
 				     
 	g_message ("Received user list:\n%s", userlist);
 	
@@ -170,7 +164,8 @@ userlist_received_cb (GaduConnection *conn, struct gg_event *evt, DownloadAsyncC
 		g_object_set (contact,
 			      "nickname", user_record[GG_FIELD_NICKNAME],
 			      "phone", user_record[GG_FIELD_PHONE],
-			      "email", user_record[GG_FIELD_EMAIL]);
+			      "email", user_record[GG_FIELD_EMAIL],
+			      NULL);
 		
 		uin_t uin = (uin_t)atoi (user_record[GG_FIELD_UIN]);
 		g_array_append_val (uins, uin);
@@ -186,7 +181,6 @@ userlist_received_cb (GaduConnection *conn, struct gg_event *evt, DownloadAsyncC
 	g_array_free (uins, TRUE);
 	
 	g_strfreev (data);
-	g_free (userlist);
 
 	tp_base_contact_list_set_list_received (TP_BASE_CONTACT_LIST (ctx->self));
 	
@@ -214,8 +208,7 @@ gadu_contact_list_download_async (TpBaseContactList *base,
 	
 	ctx->handler_id = g_signal_connect (conn, "userlist-received", G_CALLBACK (userlist_received_cb), ctx);
 	
-	
-	gg_userlist_request (conn->session, GG_USERLIST_GET, NULL);
+	gg_userlist100_request (conn->session, GG_USERLIST100_GET, 0, GG_USERLIST100_FORMAT_TYPE_GG70, NULL);
 }
 
 static void

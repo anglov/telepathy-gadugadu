@@ -232,23 +232,16 @@ message_received_cb (GaduConnection *connection, struct gg_event *evt, GaduImMan
 {
 	GaduImChannel *channel;
 	gchar *uid;
-	gchar *message = NULL;
-
+	
 	g_message ("Received message from %d", evt->event.msg.sender);
 	
 	uid = g_strdup_printf ("%d", evt->event.msg.sender);
 	channel = get_channel_for_incoming_message (self, uid);
 	g_free (uid);
 	
-	message = g_convert_with_fallback (evt->event.msg.message,
-				     		   -1, "UTF-8", "CP1250",
-						   "?", NULL, NULL, NULL);
-	
 	gadu_im_channel_receive (channel,
 				 evt->event.msg.time,
-				 message);
-	
-	g_free (message);
+				 evt->event.msg.message);
 }
 
 
