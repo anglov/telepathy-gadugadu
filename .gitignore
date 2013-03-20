@@ -1,5 +1,6 @@
 *~
 *.o
+.deps
 /aclocal.m4
 /autom4te.cache
 /config.h
@@ -11,5 +12,7 @@
 /install-sh
 /missing
 /stamp-h1
+/data/org.freedesktop.Telepathy.ConnectionManager.gadugadu.service
+/src/telepathy-gadugadu
 Makefile
 Makefile.in

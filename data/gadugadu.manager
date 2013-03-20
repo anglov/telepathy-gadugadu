@@ -1,0 +1,19 @@
+[ConnectionManager]
+Name=gadugadu
+Interfaces=
+
+[Protocol gadugadu]
+param-account=s required register
+param-password=s required register secret
+Interfaces=org.freedesktop.Telepathy.Protocol.Interface.Presence;
+ConnectionInterfaces=org.freedesktop.Telepathy.Connection.Interface.Aliasing;org.freedesktop.Telepathy.Connection.Interface.Contacts;org.freedesktop.Telepathy.Connection.Interface.ContactList;org.freedesktop.Telepathy.Connection.Interface.Requests;org.freedesktop.Telepathy.Connection.Interface.SimplePresence;
+RequestableChannelClasses=text-1;
+VCardField=
+EnglishName=Gadu-Gadu
+Icon=im-gadugadu
+
+[text-1]
+org.freedesktop.Telepathy.Channel.ChannelType s=org.freedesktop.Telepathy.Channel.Type.Text
+org.freedesktop.Telepathy.Channel.TargetHandleType u=1
+allowed=org.freedesktop.Telepathy.Channel.TargetHandle;org.freedesktop.Telepathy.Channel.TargetID;
+
