@@ -23,14 +23,18 @@
 #include "contact.h"
 #include "contact-list.h"
 
+static void gadu_contact_list_group_list_iface_init (TpContactGroupListInterface *iface);
 
-G_DEFINE_TYPE (GaduContactList, gadu_contact_list, TP_TYPE_BASE_CONTACT_LIST)
+G_DEFINE_TYPE_WITH_CODE (GaduContactList, gadu_contact_list, TP_TYPE_BASE_CONTACT_LIST,
+	G_IMPLEMENT_INTERFACE (TP_TYPE_CONTACT_GROUP_LIST,
+			       gadu_contact_list_group_list_iface_init))
 
 #define GADU_CONTACT_LIST_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE ((obj), GADU_TYPE_CONTACT_LIST, GaduContactListPrivate))
 
 
 struct _GaduContactListPrivate {
-	GHashTable *contacts;
+	GHashTable *contacts; // TpHandle => GaduContact
+	GHashTable *groups; // gchar* => TpHandleSet
 	
 	gulong status_changed_id;
 };
@@ -38,6 +42,7 @@ struct _GaduContactListPrivate {
 enum {
 	GG_FIELD_NICKNAME = 3,
 	GG_FIELD_PHONE = 4,
+	GG_FIELD_GROUPS = 5,
 	GG_FIELD_UIN = 6,
 	GG_FIELD_EMAIL = 7
 };
@@ -147,17 +152,22 @@ userlist_received_cb (GaduConnection *conn, struct gg_event *evt, DownloadAsyncC
 	guint i;
 	
 	g_hash_table_remove_all (priv->contacts);
+	g_hash_table_remove_all (priv->groups);
 	
 	GArray *uins = g_array_new (TRUE, TRUE, sizeof(uin_t));
 	
 	for (i = 0; data[i] != NULL; i++) {
 		GaduContact *contact = NULL;
 		gchar **user_record = g_strsplit (data[i], ";", 12);
+		gchar **user_groups = NULL;
+		gint groupid;
 		
 		if (g_strv_length (user_record) < 12) {
 			g_strfreev (user_record);
 			continue;
 		}
+		
+		user_groups = g_strsplit (user_record[GG_FIELD_GROUPS], ",", -1);
 		
 		contact = gadu_contact_new (user_record[GG_FIELD_UIN]);
 		
@@ -165,6 +175,7 @@ userlist_received_cb (GaduConnection *conn, struct gg_event *evt, DownloadAsyncC
 			      "nickname", user_record[GG_FIELD_NICKNAME],
 			      "phone", user_record[GG_FIELD_PHONE],
 			      "email", user_record[GG_FIELD_EMAIL],
+			      "groups", user_groups,
 			      NULL);
 		
 		uin_t uin = (uin_t)atoi (user_record[GG_FIELD_UIN]);
@@ -173,6 +184,23 @@ userlist_received_cb (GaduConnection *conn, struct gg_event *evt, DownloadAsyncC
 		handle = tp_handle_ensure (contact_repo, user_record[GG_FIELD_UIN], NULL, NULL);
 		g_hash_table_insert (priv->contacts, GUINT_TO_POINTER (handle), contact);
 		
+		gint ngroups = g_strv_length (user_groups);
+		for (groupid = 0; groupid < ngroups; groupid++) {
+			TpHandleSet *groupset = NULL;
+			
+			groupset = g_hash_table_lookup (priv->groups, user_groups[groupid]);
+			
+			if (groupset) {
+				tp_handle_set_add (groupset, handle);
+			} else {
+				groupset = tp_handle_set_new_containing (contact_repo, handle);
+				g_hash_table_insert (priv->groups,
+						     g_strdup (user_groups[groupid]),
+						     groupset);
+			}
+		}
+		
+		g_strfreev (user_groups);
 		g_strfreev (user_record);
 	}
 	
@@ -220,6 +248,10 @@ gadu_contact_list_init (GaduContactList *self)
 						      g_direct_equal,
 						      NULL,
 						      g_object_unref);
+	self->priv->groups = g_hash_table_new_full (g_str_hash,
+						    g_str_equal,
+						    g_free,
+						    (GDestroyNotify)tp_handle_set_destroy);
 }
 static void on_download_finished (GObject *obj, GAsyncResult *result, gpointer user_data)
 {
@@ -242,6 +274,61 @@ connection_status_changed_cb (GaduConnection *conn,
 							  NULL);
 			break;
 	}
+}
+
+static GStrv
+gadu_contact_list_dup_groups (TpBaseContactList *base)
+{
+	GaduContactList *self = GADU_CONTACT_LIST (base);
+	GPtrArray *result = NULL;
+	GList *item = NULL, *keys = NULL;
+	
+	result = g_ptr_array_sized_new (1);
+	keys = g_hash_table_get_keys (self->priv->groups);
+	
+	for (item = keys; item; item = item->next) {
+		g_ptr_array_add (result, g_strdup (item->data));
+	}
+	
+	g_ptr_array_add (result, NULL);
+	
+	g_list_free (keys);
+	
+	return (GStrv) g_ptr_array_free (result, FALSE);
+}
+
+static TpHandleSet *
+gadu_contact_list_dup_group_members (TpBaseContactList *base,
+				     const gchar *group)
+{
+	GaduContactList *self = GADU_CONTACT_LIST (base);
+	TpHandleSet *members = NULL;
+	TpHandleSet *result = NULL;
+	
+	members = g_hash_table_lookup (self->priv->groups, group);
+	
+	if (members) {
+		result = tp_handle_set_copy (members);
+	}
+	
+	return result;
+}
+
+static GStrv
+gadu_contact_list_dup_contact_groups (TpBaseContactList *base,
+				      TpHandle handle)
+{
+	GaduContactList *self = GADU_CONTACT_LIST (base);
+	GaduContact *contact = NULL;
+	gchar **result = NULL;
+	
+	contact = g_hash_table_lookup (self->priv->contacts, GUINT_TO_POINTER (handle));
+	
+	if (contact) {
+		g_object_get (contact, "groups", &result, NULL);
+	}
+	
+	return result;
 }
 
 static void
@@ -292,6 +379,14 @@ gadu_contact_list_class_init (GaduContactListClass *klass)
 	base_class->dup_states = gadu_contact_list_dup_states;
 	base_class->download_async = gadu_contact_list_download_async;
 
+}
+
+static void
+gadu_contact_list_group_list_iface_init (TpContactGroupListInterface *iface)
+{
+	iface->dup_groups = gadu_contact_list_dup_groups;
+	iface->dup_group_members = gadu_contact_list_dup_group_members;
+	iface->dup_contact_groups = gadu_contact_list_dup_contact_groups;
 }
 
 GaduContactList *

@@ -33,6 +33,7 @@ struct _GaduContactPrivate {
 	gchar *nickname;
 	gchar *phone;
 	gchar *email;
+	gchar **groups;
 };
 
 enum {
@@ -40,6 +41,7 @@ enum {
 	PROP_NICKNAME = 2,
 	PROP_PHONE = 3,
 	PROP_EMAIL = 4,
+	PROP_GROUPS = 5,
 	PROP_LAST
 };
 
@@ -68,6 +70,9 @@ gadu_contact_get_property (GObject *object, guint prop_id, GValue *value, GParam
 		case PROP_EMAIL:
 			g_value_set_string (value, priv->email);
 			break;
+		case PROP_GROUPS:
+			g_value_set_boxed (value, priv->groups);
+			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 	}
@@ -82,19 +87,23 @@ gadu_contact_set_property (GObject *object, guint prop_id, const GValue *value, 
 	switch (prop_id) {
 		case PROP_ID:
 			g_free (priv->id);
-			priv->id = g_strdup (g_value_get_string (value));
+			priv->id = g_value_dup_string (value);
 			break;
 		case PROP_NICKNAME:
 			g_free (priv->nickname);
-			priv->nickname = g_strdup (g_value_get_string (value));
+			priv->nickname = g_value_dup_string (value);
 			break;
 		case PROP_PHONE:
 			g_free (priv->phone);
-			priv->phone = g_strdup (g_value_get_string (value));
+			priv->phone = g_value_dup_string (value);
 			break;
 		case PROP_EMAIL:
 			g_free (priv->email);
-			priv->email = g_strdup (g_value_get_string (value));
+			priv->email = g_value_dup_string (value);
+			break;
+		case PROP_GROUPS:
+			g_strfreev (priv->groups);
+			priv->groups = g_value_dup_boxed (value);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -135,6 +144,12 @@ gadu_contact_class_init (GaduContactClass *klass)
 				     NULL,
 				     G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
 	g_object_class_install_property (object_class, PROP_EMAIL, pspec);
+	
+	pspec = g_param_spec_boxed ("groups", NULL,
+				    "List of groups to which the contact belongs",
+				    G_TYPE_STRV,
+				    G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+	g_object_class_install_property (object_class, PROP_GROUPS, pspec);
 
 	g_type_class_add_private (klass, sizeof (GaduContactPrivate));
 }
@@ -149,6 +164,8 @@ gadu_contact_finalize (GObject *object)
 	g_free (priv->nickname);
 	g_free (priv->phone);
 	g_free (priv->email);
+	
+	g_strfreev (priv->groups);
 	
 	G_OBJECT_CLASS (gadu_contact_parent_class)->finalize (object);
 }
