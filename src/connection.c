@@ -305,31 +305,30 @@ login_cb (GIOChannel *source, GIOCondition cond, gpointer data)
 	
 	if (!evt) {
 		g_message ("Connection interrupted");
+		self->priv->event_loop_id = 0;
 		return FALSE;
 	}
+
+	g_message ("login_cb: fd=%d check=%d state=%d", self->session->fd, self->session->check, self->session->state);
 
 	switch (evt->type) {
 		case GG_EVENT_NONE:
 			break;
 		case GG_EVENT_CONN_SUCCESS:
-			tp_base_connection_change_status (TP_BASE_CONNECTION (self), TP_CONNECTION_STATUS_CONNECTED, TP_CONNECTION_STATUS_REASON_REQUESTED);
 			g_message ("CONNECTED");
+			tp_base_connection_change_status (TP_BASE_CONNECTION (self), TP_CONNECTION_STATUS_CONNECTED, TP_CONNECTION_STATUS_REASON_REQUESTED);
 			gg_notify(self->session, NULL, 0);
 			self->priv->pinger_id = g_timeout_add_seconds (PING_INTERVAL, pinger, self);
-			
-			GIOChannel *channel = g_io_channel_unix_new (self->session->fd);
-			self->priv->event_loop_id = g_io_add_watch (channel, G_IO_IN | G_IO_ERR | G_IO_HUP, gadu_listener_cb, self);
-			g_io_channel_unref (channel);
-			gg_event_free (evt);
-			return FALSE;
+			self->priv->event_loop_id = g_io_add_watch (source, G_IO_IN | G_IO_ERR | G_IO_HUP, gadu_listener_cb, self);
+			goto out;
 			break;
 		case GG_EVENT_CONN_FAILED:
+			g_message ("FAILED");
 			tp_base_connection_change_status (TP_BASE_CONNECTION (self),
 							  TP_CONNECTION_STATUS_DISCONNECTED,
 							  TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
-			g_message ("FAILED");
-			gg_event_free (evt);
-			return FALSE;
+			self->priv->event_loop_id = 0;
+			goto out;
 			break;
 		case GG_EVENT_MSG:
 			g_message ("login_cb: msg: %d %s", evt->event.msg.sender, evt->event.msg.message);
@@ -337,10 +336,16 @@ login_cb (GIOChannel *source, GIOCondition cond, gpointer data)
 		default:
 			g_message ("login_cb: unknown event: %d", evt->type);
 	}
-	
+
+	self->priv->event_loop_id = g_io_add_watch (source, (self->session->check == 1) ?
+							G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL :
+							G_IO_IN | G_IO_HUP | G_IO_ERR,
+							login_cb, self);
+
+out:
 	gg_event_free (evt);
 	
-	return TRUE;
+	return FALSE;
 }
 
 static gboolean
@@ -368,8 +373,15 @@ start_connecting (TpBaseConnection *conn,
 	
 	self->session = gg_login (&login_params);
 	
+	if (self->session == NULL) {
+		tp_base_connection_change_status (conn,
+						  TP_CONNECTION_STATUS_DISCONNECTED,
+						  TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+		return FALSE;
+	}
+	
 	GIOChannel *channel = g_io_channel_unix_new (self->session->fd);
-	g_io_add_watch (channel, G_IO_IN | G_IO_OUT | G_IO_ERR | G_IO_HUP, login_cb, self);
+	self->priv->event_loop_id = g_io_add_watch (channel, G_IO_IN | G_IO_ERR | G_IO_HUP, login_cb, self);
 	g_io_channel_unref (channel);
 	
 	return TRUE;
