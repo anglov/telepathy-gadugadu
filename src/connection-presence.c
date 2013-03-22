@@ -250,6 +250,8 @@ emit_self_presence_update (GaduConnection *self)
 	
 	tp_presence_mixin_emit_one_presence_update (G_OBJECT (self), self_handle, status);
 	
+	tp_presence_status_free (status);
+	
 	return TRUE;
 }
 

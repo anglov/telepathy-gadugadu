@@ -360,6 +360,11 @@ gadu_contact_list_dispose (GObject *obj)
 		g_hash_table_unref (priv->contacts);
 		priv->contacts = NULL;
 	}
+	
+	if (priv->groups) {
+		g_hash_table_unref (priv->groups);
+		priv->groups = NULL;
+	}
 
 	G_OBJECT_CLASS (gadu_contact_list_parent_class)->dispose (obj);
 }

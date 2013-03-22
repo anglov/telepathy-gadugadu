@@ -202,6 +202,8 @@ status_received_cb (GaduConnection *self,
 	status = gadu_presence_get_tp_presence_status (presence);
 	
 	tp_presence_mixin_emit_one_presence_update (G_OBJECT (self), contact, status);
+	
+	tp_presence_status_free (status);
 }
 
 static void
@@ -318,6 +320,7 @@ login_cb (GIOChannel *source, GIOCondition cond, gpointer data)
 			GIOChannel *channel = g_io_channel_unix_new (self->session->fd);
 			self->priv->event_loop_id = g_io_add_watch (channel, G_IO_IN | G_IO_ERR | G_IO_HUP, gadu_listener_cb, self);
 			g_io_channel_unref (channel);
+			gg_event_free (evt);
 			return FALSE;
 			break;
 		case GG_EVENT_CONN_FAILED:
@@ -325,8 +328,14 @@ login_cb (GIOChannel *source, GIOCondition cond, gpointer data)
 							  TP_CONNECTION_STATUS_DISCONNECTED,
 							  TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
 			g_message ("FAILED");
+			gg_event_free (evt);
 			return FALSE;
 			break;
+		case GG_EVENT_MSG:
+			g_message ("login_cb: msg: %d %s", evt->event.msg.sender, evt->event.msg.message);
+			break;
+		default:
+			g_message ("login_cb: unknown event: %d", evt->type);
 	}
 	
 	gg_event_free (evt);
@@ -469,6 +478,19 @@ finalize (GObject *object)
 	G_OBJECT_CLASS (gadu_connection_parent_class)->finalize (object);
 }
 
+static void
+dispose (GObject *obj)
+{
+	GaduConnection *self = GADU_CONNECTION (obj);
+	GaduConnectionPrivate *priv = self->priv;
+	
+	if (priv->presence_cache) {
+		g_hash_table_unref (priv->presence_cache);
+		priv->presence_cache = NULL;
+	}
+	
+	G_OBJECT_CLASS (gadu_connection_parent_class)->dispose (obj);
+}
 
 static void
 gadu_connection_init (GaduConnection *self)
@@ -490,6 +512,7 @@ gadu_connection_class_init (GaduConnectionClass *klass)
 	object_class->constructed = constructed;
 	object_class->get_property = get_property;
 	object_class->set_property = set_property;
+	object_class->dispose = dispose;
 	object_class->finalize = finalize;
 	
 	g_type_class_add_private (klass, sizeof (GaduConnectionPrivate));
