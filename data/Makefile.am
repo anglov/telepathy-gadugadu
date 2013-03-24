@@ -1,4 +1,4 @@
-EXTRA_DIST = gadugadu.service.in
+EXTRA_DIST = gadugadu.service.in gadugadu.manager
 
 servicedir = $(datadir)/dbus-1/services
 service_DATA = org.freedesktop.Telepathy.ConnectionManager.gadugadu.service
