@@ -18,6 +18,7 @@
 
 #include <telepathy-glib/telepathy-glib.h>
 #include <libgadu.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define DEBUG_FLAG GADU_DEBUG_FLAG_CONNECTION
@@ -248,7 +249,6 @@ gadu_listener_cb (GIOChannel *source, GIOCondition cond, gpointer data)
 	GaduConnection *self = GADU_CONNECTION (data);
 
 	struct gg_event *e;
-	gint i;
 	
 	e = gg_watch_fd (self->session);
 	

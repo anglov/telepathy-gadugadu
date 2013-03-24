@@ -245,7 +245,7 @@ message_received_cb (GaduConnection *connection, struct gg_event *evt, GaduImMan
 	
 	gadu_im_channel_receive (channel,
 				 evt->event.msg.time,
-				 evt->event.msg.message);
+				 (char *) evt->event.msg.message);
 }
 
 

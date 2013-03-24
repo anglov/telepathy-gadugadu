@@ -267,7 +267,6 @@ set_own_status (GObject *obj,
 	if (status) {
 		GHashTable *arguments = status->optional_arguments;
 		GValue *message = NULL;
-		GaduPresence *presence = NULL;
 		const gchar *message_str = NULL;
 		
 		if (arguments) {

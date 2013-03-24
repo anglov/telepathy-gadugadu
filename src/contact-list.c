@@ -18,6 +18,7 @@
 
 #include <telepathy-glib/telepathy-glib.h>
 #include <libgadu.h>
+#include <stdlib.h>
 
 #define DEBUG_FLAG GADU_DEBUG_FLAG_CONTACTS
 
@@ -229,7 +230,7 @@ gadu_contact_list_download_async (TpBaseContactList *base,
 	TpBaseConnection *base_conn = tp_base_contact_list_get_connection (base, NULL);
 	GaduConnection *conn = GADU_CONNECTION (base_conn);
 	DownloadAsyncCtx *ctx = g_new0 (DownloadAsyncCtx, 1);
-	GSimpleAsyncResult *result;
+
 	gadu_debug ("Sending userlist request");
 	ctx->self = g_object_ref (GADU_CONTACT_LIST (base));
 	ctx->result = g_simple_async_result_new (G_OBJECT (base),

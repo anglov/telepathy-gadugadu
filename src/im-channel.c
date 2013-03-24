@@ -18,6 +18,7 @@
 
 #include <telepathy-glib/telepathy-glib.h>
 #include <libgadu.h>
+#include <stdlib.h>
 
 #define DEBUG_FLAG GADU_DEBUG_FLAG_IM
 
@@ -53,7 +54,7 @@ send_message (GObject *object,
 
 	gadu_debug ("Sending message to uin=%d", uin);
 
-	gg_send_message (conn->session, GG_CLASS_CHAT, uin, msg);
+	gg_send_message (conn->session, GG_CLASS_CHAT, uin, (unsigned char *) msg);
 	
 	tp_message_mixin_sent (object,
 			       message,
