@@ -12,6 +12,13 @@ AM_SILENT_RULES([yes])
 
 # Checks for programs.
 AC_PROG_CC
+AM_PROG_CC_C_O
+
+if test "$GCC" = "yes"; then
+	WARNINGFLAGS="$WARNINGFLAGS -Wall"
+	WARNINGFLAGS="$WARNINGFLAGS -Wformat-security"
+fi
+AC_SUBST(WARNINGFLAGS)
 
 # Checks for libraries.
 PKG_CHECK_MODULES(GLIB, [glib-2.0 gobject-2.0 gio-2.0])

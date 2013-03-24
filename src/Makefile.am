@@ -34,6 +34,10 @@ telepathy_gadugadu_SOURCES =				\
 	protocol.h					\
 	$(NULL)
 
+telepathy_gadugadu_CFLAGS =				\
+	$(WARNINGFLAGS)					\
+	$(NULL)
+
 telepathy_gadugadu_LDADD =				\
 	$(DBUS_LIBS)					\
 	$(GLIB_LIBS)					\
