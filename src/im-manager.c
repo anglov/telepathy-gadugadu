@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "config.h"
+
 #include <telepathy-glib/telepathy-glib.h>
 #include <libgadu.h>
 

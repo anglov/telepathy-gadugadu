@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "config.h"
+
 #include <telepathy-glib/telepathy-glib.h>
 
 #include "connection-manager.h"
 #include "debug.h"
-
-#define VERSION "0.0.1"
 
 int
 main (int argc, char **argv)
