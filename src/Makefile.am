@@ -40,3 +40,4 @@ telepathy_gadugadu_LDADD =				\
 	$(TP_GLIB_LIBS)					\
 	$(LIBGADU_LIBS)					\
 	$(NULL)
+
