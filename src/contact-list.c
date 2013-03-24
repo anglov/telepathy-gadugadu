@@ -19,9 +19,12 @@
 #include <telepathy-glib/telepathy-glib.h>
 #include <libgadu.h>
 
+#define DEBUG_FLAG GADU_DEBUG_FLAG_CONTACTS
+
 #include "connection.h"
 #include "contact.h"
 #include "contact-list.h"
+#include "debug.h"
 
 static void gadu_contact_list_group_list_iface_init (TpContactGroupListInterface *iface);
 
@@ -146,7 +149,7 @@ userlist_received_cb (GaduConnection *conn, struct gg_event *evt, DownloadAsyncC
 
 	userlist = evt->event.userlist100_reply.reply;
 				     
-	g_message ("Received user list:\n%s", userlist);
+	gadu_debug ("User list:\n%s", userlist);
 	
 	gchar **data = g_strsplit (userlist, "\r\n", -1);
 	guint i;
@@ -227,7 +230,7 @@ gadu_contact_list_download_async (TpBaseContactList *base,
 	GaduConnection *conn = GADU_CONNECTION (base_conn);
 	DownloadAsyncCtx *ctx = g_new0 (DownloadAsyncCtx, 1);
 	GSimpleAsyncResult *result;
-	g_message ("Sending userlist request");
+	gadu_debug ("Sending userlist request");
 	ctx->self = g_object_ref (GADU_CONTACT_LIST (base));
 	ctx->result = g_simple_async_result_new (G_OBJECT (base),
 						 callback,
@@ -258,7 +261,7 @@ static void on_download_finished (GObject *obj, GAsyncResult *result, gpointer u
 	TpBaseContactList *base = TP_BASE_CONTACT_LIST (obj);
 
 	if (!tp_base_contact_list_download_finish (base, result, NULL))
-		g_message ("DOWNLOAD ERROR");
+		gadu_error ("Failed to get contacts list");
 }
 static void
 connection_status_changed_cb (GaduConnection *conn,
@@ -268,7 +271,6 @@ connection_status_changed_cb (GaduConnection *conn,
 {
 	switch (status) {
 		case TP_CONNECTION_STATUS_CONNECTED:
-			g_message ("CB: StatusChanged()");
 			gadu_contact_list_download_async (TP_BASE_CONTACT_LIST (self),
 							  on_download_finished,
 							  NULL);

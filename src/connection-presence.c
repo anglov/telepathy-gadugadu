@@ -19,8 +19,11 @@
 #include <telepathy-glib/telepathy-glib.h>
 #include <libgadu.h>
 
+#define DEBUG_FLAG GADU_DEBUG_FLAG_PRESENCE
+
 #include "connection.h"
 #include "connection-presence.h"
+#include "debug.h"
 
 struct _GaduConnectionPresencePrivate
 {
@@ -51,7 +54,7 @@ map_gg_status_to_gadu (gint ggstatus)
 		case GG_STATUS_INVISIBLE_DESCR:
 			return GADU_STATUS_HIDDEN;
 		default:
-			g_message ("Unknown status");
+			gadu_warn ("Unknown gg status=%d", GG_S (ggstatus));
 			return GADU_STATUS_UNKNOWN;
 			
 	}
@@ -60,8 +63,6 @@ map_gg_status_to_gadu (gint ggstatus)
 static gint
 map_gadu_status_to_gg (GaduStatusEnum gadu_status, gboolean has_message)
 {
-	g_message ("%d", gadu_status);
-
 	switch (gadu_status) {
 		case GADU_STATUS_OFFLINE:
 			if (has_message)
@@ -89,7 +90,7 @@ map_gadu_status_to_gg (GaduStatusEnum gadu_status, gboolean has_message)
 			else
 				return GG_STATUS_INVISIBLE;
 		default:
-			g_message ("Unknown gadu status. Falling back to AVAILABLE");
+			gadu_warn ("Unknown gadu status. Falling back to AVAILABLE");
 			if (has_message)
 				return GG_STATUS_AVAIL_DESCR;
 			else
@@ -194,7 +195,7 @@ get_contact_statuses (GObject *obj,
 		TpPresenceStatus *status = NULL;
 		GaduPresence *presence = NULL;
 		
-		g_message ("GetContactStatuses(handle=%d)", contact);
+		gadu_debug ("handle=%d", contact);
 		
 		if (contact == tp_base_connection_get_self_handle (TP_BASE_CONNECTION (obj))) {
 			presence = priv->self_presence;
@@ -232,7 +233,7 @@ emit_self_presence_update (GaduConnection *self)
 		message_truncated = g_strndup (presence->message, get_maximum_status_message_length_cb (G_OBJECT (self)));
 		
 		if (gg_change_status_descr (self->session, gg_status, message_truncated) < 0) {
-			g_message ("Failed to set own status");
+			gadu_error ("Failed to set own status");
 			g_free (message_truncated);
 			return FALSE;
 		}
@@ -240,7 +241,7 @@ emit_self_presence_update (GaduConnection *self)
 		g_free (message_truncated);
 	} else {
 		if (gg_change_status (self->session, gg_status) < 0) {
-			g_message ("Failed to set own status");
+			gadu_error ("Failed to set own status");
 			return FALSE;
 		}
 	}

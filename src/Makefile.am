@@ -1,5 +1,13 @@
 NULL =
 
+AM_CPPFLAGS =						\
+	$(DBUS_CFLAGS)					\
+	$(GLIB_CFLAGS)					\
+	$(TP_GLIB_CFLAGS)				\
+	$(LIBGADU_CFLAGS)				\
+	-DG_LOG_DOMAIN=\"gadugadu\"			\
+	$(NULL)
+
 libexec_PROGRAMS = telepathy-gadugadu
 
 telepathy_gadugadu_SOURCES =				\
@@ -15,6 +23,8 @@ telepathy_gadugadu_SOURCES =				\
 	contact.h					\
 	contact-list.c					\
 	contact-list.h					\
+	debug.c						\
+	debug.h						\
 	im-channel.c					\
 	im-channel.h					\
 	im-manager.c					\
@@ -22,13 +32,6 @@ telepathy_gadugadu_SOURCES =				\
 	main.c						\
 	protocol.c					\
 	protocol.h					\
-	$(NULL)
-
-telepathy_gadugadu_CPPFLAGS = 				\
-	$(DBUS_CFLAGS)					\
-	$(GLIB_CFLAGS)					\
-	$(TP_GLIB_CFLAGS)				\
-	$(LIBGADU_CFLAGS)				\
 	$(NULL)
 
 telepathy_gadugadu_LDADD =				\

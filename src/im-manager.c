@@ -19,7 +19,10 @@
 #include <telepathy-glib/telepathy-glib.h>
 #include <libgadu.h>
 
+#define DEBUG_FLAG GADU_DEBUG_FLAG_IM
+
 #include "connection.h"
+#include "debug.h"
 #include "im-channel.h"
 #include "im-manager.h"
 
@@ -179,6 +182,9 @@ new_im_channel (GaduImManager *self,
 		initiator = handle;
 	}
 	
+	gadu_debug ("Creating new IM Channel: handle=%d initiator=%d",
+		    handle, initiator);
+	
 	channel = gadu_im_channel_new (self->priv->connection,
 				       handle,
 				       initiator,
@@ -232,8 +238,6 @@ message_received_cb (GaduConnection *connection, struct gg_event *evt, GaduImMan
 {
 	GaduImChannel *channel;
 	gchar *uid;
-	
-	g_message ("Received message from %d", evt->event.msg.sender);
 	
 	uid = g_strdup_printf ("%d", evt->event.msg.sender);
 	channel = get_channel_for_incoming_message (self, uid);

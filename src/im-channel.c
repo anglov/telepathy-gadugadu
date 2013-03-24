@@ -19,7 +19,10 @@
 #include <telepathy-glib/telepathy-glib.h>
 #include <libgadu.h>
 
+#define DEBUG_FLAG GADU_DEBUG_FLAG_IM
+
 #include "connection.h"
+#include "debug.h"
 #include "im-channel.h"
 
 static void destroyable_iface_init (gpointer, gpointer);
@@ -47,6 +50,8 @@ send_message (GObject *object,
 	uin_t uin = (uin_t) atoi (id);
 
 	msg = tp_message_to_text (message, NULL);
+
+	gadu_debug ("Sending message to uin=%d", uin);
 
 	gg_send_message (conn->session, GG_CLASS_CHAT, uin, msg);
 	

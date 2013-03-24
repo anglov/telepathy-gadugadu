@@ -19,22 +19,33 @@
 #include <telepathy-glib/telepathy-glib.h>
 
 #include "connection-manager.h"
+#include "debug.h"
 
 #define VERSION "0.0.1"
 
 int
 main (int argc, char **argv)
 {
-	if (g_getenv ("GADUGADU_TIMING") != NULL)
-		g_log_set_default_handler (tp_debug_timestamped_log_handler, NULL);
+	gint ret;
+
+	g_type_init ();
+	
+	gadu_debug_init ();
+
+	if (g_getenv ("GADUGADU_VERBOSE") != NULL)
+		gadu_debug_set_verbose (TRUE);
 
 	if (g_getenv ("GADUGADU_PERSIST") != NULL)
 		tp_debug_set_persistent (TRUE);
 
-	return tp_run_connection_manager ("telepathy-gadugadu",
-					  VERSION,
-					  gadu_connection_manager_new,
-					  argc,
-					  argv);
+	ret = tp_run_connection_manager ("telepathy-gadugadu",
+					 VERSION,
+					 gadu_connection_manager_new,
+					 argc,
+					 argv);
+	
+	gadu_debug_finalize ();
+	
+	return ret;
 }
 

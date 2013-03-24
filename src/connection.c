@@ -18,9 +18,11 @@
 
 #include <telepathy-glib/telepathy-glib.h>
 #include <libgadu.h>
-
 #include <string.h>
 
+#define DEBUG_FLAG GADU_DEBUG_FLAG_CONNECTION
+
+#include "debug.h"
 #include "connection.h"
 #include "connection-aliasing.h"
 #include "connection-presence.h"
@@ -40,7 +42,6 @@ G_DEFINE_TYPE_WITH_CODE (GaduConnection, gadu_connection, TP_TYPE_BASE_CONNECTIO
 			       tp_presence_mixin_simple_presence_iface_init))
 
 #define GADU_CONNECTION_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE ((obj), GADU_TYPE_CONNECTION, GaduConnectionPrivate))
-
 
 #define PING_INTERVAL 60
 
@@ -252,7 +253,10 @@ gadu_listener_cb (GIOChannel *source, GIOCondition cond, gpointer data)
 	e = gg_watch_fd (self->session);
 	
 	if (!e) {
-		g_message ("NETWORK ERROR: Unable to read from socket");
+		gadu_error ("Network error: Unable to read from socket");
+		tp_base_connection_change_status (TP_BASE_CONNECTION (self),
+						  TP_CONNECTION_STATUS_DISCONNECTED,
+						  TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
 		return FALSE;
 	}
 	
@@ -260,31 +264,39 @@ gadu_listener_cb (GIOChannel *source, GIOCondition cond, gpointer data)
 		case GG_EVENT_NONE:
 			break;
 		case GG_EVENT_MSG:
+			gadu_debug_full (GADU_DEBUG_FLAG_IM,
+					 "EVENT_MSG: Received message from uid=%d",
+					 e->event.msg.sender);
 			g_signal_emit (self, signals[SIGNAL_MESSAGE_RECEIVED], 0, e);
 			break;
 		case GG_EVENT_STATUS60:
+			gadu_debug_full (GADU_DEBUG_FLAG_PRESENCE,
+					 "EVENT_STATUS60: uid=%d sets status=%d",
+					 e->event.status60.uin, e->event.status60.status);
 			status_received_cb (self,
 					  e->event.status60.uin,
 					  e->event.status60.status,
 					  e->event.status60.descr);
 			break;
 		case GG_EVENT_NOTIFY60:
+			gadu_debug_full (GADU_DEBUG_FLAG_PRESENCE,
+					 "EVENT_NOTIFY60: Received contacts statuses");
 			notify_received_cb (self, e);
 			break;
 		case GG_EVENT_NOTIFY:
-			for (i = 0; e->event.notify[i].uin != 0; i++) {
-				g_message ("NOTIFY: uin=%d status=%d",
-					e->event.notify[i].uin,
-					e->event.notify[i].status);
-			}
+			gadu_error_full (GADU_DEBUG_FLAG_PRESENCE,
+					 "EVENT_NOTIFY: Not implemented");
 			break;
 		case GG_EVENT_USERLIST100_REPLY:
-			if (e->event.userlist100_reply.type == GG_USERLIST100_REPLY_LIST)
+			if (e->event.userlist100_reply.type == GG_USERLIST100_REPLY_LIST) {
+				gadu_debug_full (GADU_DEBUG_FLAG_CONTACTS,
+					 	 "EVENT_USERLIST100_REPLY: Received contacts list");
 				g_signal_emit (self, signals[SIGNAL_USERLIST_RECEIVED], 0, e);
+			}
 			break;
 		case GG_EVENT_USERLIST:
-			if (e->event.userlist.type == GG_USERLIST_GET_REPLY)
-				g_signal_emit (self, signals[SIGNAL_USERLIST_RECEIVED], 0, e);
+			gadu_error_full (GADU_DEBUG_FLAG_CONTACTS,
+					 "EVENT_USERLIST: Not implemented");
 			break;
 	}
 	
@@ -304,26 +316,31 @@ login_cb (GIOChannel *source, GIOCondition cond, gpointer data)
 	evt = gg_watch_fd (self->session);
 	
 	if (!evt) {
-		g_message ("Connection interrupted");
+		gadu_error ("Connection interrupted");
 		self->priv->event_loop_id = 0;
 		return FALSE;
 	}
 
-	g_message ("login_cb: fd=%d check=%d state=%d", self->session->fd, self->session->check, self->session->state);
+	gadu_debug ("fd=%d check=%d state=%d", self->session->fd, self->session->check, self->session->state);
 
 	switch (evt->type) {
 		case GG_EVENT_NONE:
 			break;
 		case GG_EVENT_CONN_SUCCESS:
-			g_message ("CONNECTED");
-			tp_base_connection_change_status (TP_BASE_CONNECTION (self), TP_CONNECTION_STATUS_CONNECTED, TP_CONNECTION_STATUS_REASON_REQUESTED);
+			gadu_debug ("Connected");
+			tp_base_connection_change_status (TP_BASE_CONNECTION (self),
+							  TP_CONNECTION_STATUS_CONNECTED,
+							  TP_CONNECTION_STATUS_REASON_REQUESTED);
+			
 			gg_notify(self->session, NULL, 0);
+			
 			self->priv->pinger_id = g_timeout_add_seconds (PING_INTERVAL, pinger, self);
-			self->priv->event_loop_id = g_io_add_watch (source, G_IO_IN | G_IO_ERR | G_IO_HUP, gadu_listener_cb, self);
+			self->priv->event_loop_id = g_io_add_watch (source, G_IO_IN | G_IO_ERR | G_IO_HUP,
+								    gadu_listener_cb, self);
 			goto out;
 			break;
 		case GG_EVENT_CONN_FAILED:
-			g_message ("FAILED");
+			gadu_debug ("Connection failed");
 			tp_base_connection_change_status (TP_BASE_CONNECTION (self),
 							  TP_CONNECTION_STATUS_DISCONNECTED,
 							  TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
@@ -331,10 +348,10 @@ login_cb (GIOChannel *source, GIOCondition cond, gpointer data)
 			goto out;
 			break;
 		case GG_EVENT_MSG:
-			g_message ("login_cb: msg: %d %s", evt->event.msg.sender, evt->event.msg.message);
+			gadu_debug ("Received message while connecting");
 			break;
 		default:
-			g_message ("login_cb: unknown event: %d", evt->type);
+			gadu_warn ("Unknown event type: %d", evt->type);
 	}
 
 	self->priv->event_loop_id = g_io_add_watch (source, (self->session->check == 1) ?
@@ -369,7 +386,7 @@ start_connecting (TpBaseConnection *conn,
 	login_params.status = GG_STATUS_AVAIL;
 	login_params.encoding = GG_ENCODING_UTF8;
 	
-	g_message ("Connecting: uin=%d, password=%s", login_params.uin, login_params.password);
+	gadu_debug ("Connecting (uin=%d)", login_params.uin);
 	
 	self->session = gg_login (&login_params);
 	
@@ -393,7 +410,7 @@ shut_down (TpBaseConnection *conn)
 {
 	GaduConnection *self = GADU_CONNECTION (conn);
 
-	g_message ("Shut down");
+	gadu_debug ("Disconnected");
 
 	if (self->priv->pinger_id > 0) {
 		g_source_remove (self->priv->pinger_id);
