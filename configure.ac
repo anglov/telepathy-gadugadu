@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([telepathy-gadugadu], [0.0.1], [marcin.banasiak@gmail.com])
+AC_INIT([telepathy-gadugadu], [0.1.0], [marcin.banasiak@gmail.com])
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_HEADERS([config.h])
 
