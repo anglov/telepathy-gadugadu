@@ -6,7 +6,9 @@ AC_INIT([telepathy-gadugadu], [0.0.1], [marcin.banasiak@gmail.com])
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_HEADERS([config.h])
 
-AM_INIT_AUTOMAKE([1.11 dist-xz])
+AM_INIT_AUTOMAKE([1.11 no-dist-gzip dist-xz])
+
+AM_SILENT_RULES([yes])
 
 # Checks for programs.
 AC_PROG_CC
