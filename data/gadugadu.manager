@@ -4,7 +4,7 @@ Interfaces=
 
 [Protocol gadugadu]
 param-account=s required register
-param-password=s required register secret
+param-password=s register secret
 Interfaces=org.freedesktop.Telepathy.Protocol.Interface.Presence;
 ConnectionInterfaces=org.freedesktop.Telepathy.Connection.Interface.Aliasing;org.freedesktop.Telepathy.Connection.Interface.Contacts;org.freedesktop.Telepathy.Connection.Interface.ContactList;org.freedesktop.Telepathy.Connection.Interface.ContactGroups;org.freedesktop.Telepathy.Connection.Interface.Requests;org.freedesktop.Telepathy.Connection.Interface.SimplePresence;
 RequestableChannelClasses=text-1;

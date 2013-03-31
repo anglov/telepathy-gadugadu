@@ -61,6 +61,7 @@ struct _GaduConnectionPrivate
 	
 	GHashTable *presence_cache;
 	GaduContactList *contact_list;
+	TpSimplePasswordManager *password_manager;
 };
 
 
@@ -157,6 +158,9 @@ create_channel_managers (TpBaseConnection *conn)
 	
 	self->priv->contact_list = gadu_contact_list_new (self);
 	g_ptr_array_add (ret, self->priv->contact_list);
+	
+	self->priv->password_manager = tp_simple_password_manager_new (conn);
+	g_ptr_array_add (ret, self->priv->password_manager);
 	
 	return ret;
 }
@@ -368,17 +372,9 @@ out:
 }
 
 static gboolean
-start_connecting (TpBaseConnection *conn,
-		  GError **error)
+gadu_connection_establish_connection (GaduConnection *self)
 {
-	GaduConnection *self = GADU_CONNECTION (conn);
-	TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT);
-	TpHandle self_handle;
-	
-	self_handle = tp_handle_ensure (contact_repo, self->priv->account, NULL, NULL);
-	
-	tp_base_connection_set_self_handle (conn, self_handle);
-	
+	TpBaseConnection *base = TP_BASE_CONNECTION (self);
 	struct gg_login_params login_params;
 	
 	memset (&login_params, 0, sizeof (login_params));
@@ -393,7 +389,7 @@ start_connecting (TpBaseConnection *conn,
 	self->session = gg_login (&login_params);
 	
 	if (self->session == NULL) {
-		tp_base_connection_change_status (conn,
+		tp_base_connection_change_status (base,
 						  TP_CONNECTION_STATUS_DISCONNECTED,
 						  TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
 		return FALSE;
@@ -402,6 +398,63 @@ start_connecting (TpBaseConnection *conn,
 	GIOChannel *channel = g_io_channel_unix_new (self->session->fd);
 	self->priv->event_loop_id = g_io_add_watch (channel, G_IO_IN | G_IO_ERR | G_IO_HUP, login_cb, self);
 	g_io_channel_unref (channel);
+	
+	return TRUE;
+}
+
+static void
+gadu_connection_password_manager_prompt_cb (GObject *source,
+					    GAsyncResult *result,
+					    gpointer user_data)
+{
+	GaduConnection *self = GADU_CONNECTION (user_data);
+	TpBaseConnection *base = TP_BASE_CONNECTION (self);
+	const GString *password = NULL;
+	GError *error = NULL;
+	
+	password = tp_simple_password_manager_prompt_finish (TP_SIMPLE_PASSWORD_MANAGER (source),
+							     result,
+							     &error);
+	
+	if (error != NULL) {
+		gadu_error ("Simple password manager failed: %s", error->message);
+		
+		tp_base_connection_change_status (base,
+						  TP_CONNECTION_STATUS_DISCONNECTED,
+						  TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED);
+		
+		return;
+	}
+	
+	g_free (self->priv->password);
+	self->priv->password = g_strdup (password->str);
+
+	gadu_connection_establish_connection (self);
+}
+
+static gboolean
+start_connecting (TpBaseConnection *conn,
+		  GError **error)
+{
+	GaduConnection *self = GADU_CONNECTION (conn);
+	TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT);
+	TpHandle self_handle;
+	
+	self_handle = tp_handle_ensure (contact_repo, self->priv->account, NULL, NULL);
+	
+	tp_base_connection_set_self_handle (conn, self_handle);
+	
+	tp_base_connection_change_status (conn,
+					  TP_CONNECTION_STATUS_CONNECTING,
+					  TP_CONNECTION_STATUS_REASON_REQUESTED);
+	
+	if (!self->priv->password) {
+		tp_simple_password_manager_prompt_async (self->priv->password_manager,
+							 gadu_connection_password_manager_prompt_cb,
+							 self);
+	} else {
+		return gadu_connection_establish_connection (self);
+	}
 	
 	return TRUE;
 }

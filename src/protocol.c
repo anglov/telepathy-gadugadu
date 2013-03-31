@@ -44,7 +44,7 @@ static TpCMParamSpec gadu_params[] = {
 	  "password",
 	  DBUS_TYPE_STRING_AS_STRING,
 	  G_TYPE_STRING,
-	  TP_CONN_MGR_PARAM_FLAG_REQUIRED | TP_CONN_MGR_PARAM_FLAG_REGISTER | TP_CONN_MGR_PARAM_FLAG_SECRET,
+	  TP_CONN_MGR_PARAM_FLAG_REGISTER | TP_CONN_MGR_PARAM_FLAG_SECRET,
 	  NULL,
 	  0,
 	  tp_cm_param_filter_string_nonempty,
@@ -67,8 +67,8 @@ new_connection (TpBaseProtocol *protocol,
 				GError **error)
 {
 	return gadu_connection_new (tp_asv_get_string (asv, "account"),
-								tp_asv_get_string (asv, "password"),
-								tp_base_protocol_get_name (protocol));
+				    tp_asv_get_string (asv, "password"),
+				    tp_base_protocol_get_name (protocol));
 }
 
 
