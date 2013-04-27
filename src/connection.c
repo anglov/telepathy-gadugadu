@@ -77,6 +77,7 @@ enum
 {
 	SIGNAL_MESSAGE_RECEIVED,
 	SIGNAL_USERLIST_RECEIVED,
+	SIGNAL_TYPING_NOTIFICATION,
 	
 	SIGNAL_LAST
 };
@@ -284,6 +285,13 @@ gadu_listener_cb (GIOChannel *source, GIOCondition cond, gpointer data)
 					  e->event.status60.status,
 					  e->event.status60.descr);
 			break;
+		case GG_EVENT_TYPING_NOTIFICATION:
+			gadu_debug_full (GADU_DEBUG_FLAG_IM,
+					 "EVENT_TYPING_NOTIFICATION: uid=%d length=%d",
+					 e->event.typing_notification.uin,
+					 e->event.typing_notification.length);
+			g_signal_emit (self, signals[SIGNAL_TYPING_NOTIFICATION], 0, e);
+			break;
 		case GG_EVENT_NOTIFY60:
 			gadu_debug_full (GADU_DEBUG_FLAG_PRESENCE,
 					 "EVENT_NOTIFY60: Received contacts statuses");
@@ -383,6 +391,7 @@ gadu_connection_establish_connection (GaduConnection *self)
 	login_params.async = 1;
 	login_params.status = GG_STATUS_AVAIL;
 	login_params.encoding = GG_ENCODING_UTF8;
+	login_params.protocol_features = GG_FEATURE_TYPING_NOTIFICATION;
 	
 	gadu_debug ("Connecting (uin=%d)", login_params.uin);
 	
@@ -631,6 +640,11 @@ gadu_connection_class_init (GaduConnectionClass *klass)
 			      G_TYPE_NONE, 1, G_TYPE_POINTER);
 	signals[SIGNAL_USERLIST_RECEIVED] =
 		g_signal_new ("userlist-received",
+			      G_TYPE_FROM_CLASS (object_class), G_SIGNAL_RUN_LAST,
+			      0, NULL, NULL, g_cclosure_marshal_VOID__POINTER,
+			      G_TYPE_NONE, 1, G_TYPE_POINTER);
+	signals[SIGNAL_TYPING_NOTIFICATION] =
+		g_signal_new ("typing-notification",
 			      G_TYPE_FROM_CLASS (object_class), G_SIGNAL_RUN_LAST,
 			      0, NULL, NULL, g_cclosure_marshal_VOID__POINTER,
 			      G_TYPE_NONE, 1, G_TYPE_POINTER);

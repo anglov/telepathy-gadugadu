@@ -33,8 +33,15 @@ static void destroyable_iface_init (gpointer, gpointer);
 G_DEFINE_TYPE_WITH_CODE (GaduImChannel, gadu_im_channel, TP_TYPE_BASE_CHANNEL,
 	G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_TEXT, tp_message_mixin_text_iface_init)
 	G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_MESSAGES, tp_message_mixin_messages_iface_init)
+	G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE, tp_message_mixin_chat_state_iface_init)
 	G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_DESTROYABLE, destroyable_iface_init))
 
+#define GADU_IM_CHANNEL_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE ((obj), GADU_TYPE_IM_CHANNEL, GaduImChannelPrivate))
+
+struct _GaduImChannelPrivate
+{
+	gint last_type_length;
+};
 
 static void
 send_message (GObject *object,
@@ -88,7 +95,65 @@ gadu_im_channel_receive (GaduImChannel *self,
 	tp_message_set_string (msg, 1, "content-type", "text/plain");
 	tp_message_set_string (msg, 1, "content", text);
 	
+	tp_message_mixin_change_chat_state (G_OBJECT (self), sender, TP_CHANNEL_CHAT_STATE_ACTIVE);
+	
 	tp_message_mixin_take_received (G_OBJECT (self), msg);
+}
+
+void
+gadu_im_channel_type_notify (GaduImChannel *self,
+			     gint length)
+{
+	GaduImChannelPrivate *priv = self->priv;
+	TpChannelChatState state;
+	TpHandle handle;
+	
+	handle = tp_base_channel_get_target_handle (TP_BASE_CHANNEL (self));
+	
+	if (length == 0) {
+		state = TP_CHANNEL_CHAT_STATE_ACTIVE;
+	} else if (priv->last_type_length == length) {
+		state = TP_CHANNEL_CHAT_STATE_PAUSED;
+	} else {
+		state = TP_CHANNEL_CHAT_STATE_COMPOSING;
+	}
+	
+	priv->last_type_length = length;
+	
+	tp_message_mixin_change_chat_state (G_OBJECT (self), handle, state);
+}
+
+static gboolean
+gadu_im_channel_send_chat_state (GObject *object,
+				 TpChannelChatState state,
+				 GError **error)
+{
+	TpBaseChannel *base = TP_BASE_CHANNEL (object);
+	TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
+	GaduConnection *conn = GADU_CONNECTION (base_conn);
+	gint ret = 0;
+	
+	gadu_debug ("send chat state: %d", state);
+	
+	TpHandle target = tp_base_channel_get_target_handle (base);
+	TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base_conn, TP_HANDLE_TYPE_CONTACT);
+	const gchar *id = tp_handle_inspect (contact_repo, target);
+	uin_t uin = (uin_t) atoi (id);
+	
+	switch (state) {
+		case TP_CHANNEL_CHAT_STATE_ACTIVE:
+		case TP_CHANNEL_CHAT_STATE_GONE:
+		case TP_CHANNEL_CHAT_STATE_PAUSED:
+			ret = gg_typing_notification (conn->session, uin, 0);
+			break;
+		case TP_CHANNEL_CHAT_STATE_COMPOSING:
+			ret = gg_typing_notification (conn->session, uin, g_random_int_range (1, 1024));
+			break;
+		case TP_CHANNEL_CHAT_STATE_INACTIVE:
+			break;
+	}
+	
+	return ret == 0 ? TRUE : FALSE;
 }
 
 static void
@@ -115,6 +180,8 @@ constructed (GObject *obj)
 					    G_N_ELEMENTS (types), types, 0,
 					    TP_DELIVERY_REPORTING_SUPPORT_FLAG_RECEIVE_FAILURES,
 					    supported_content_types);
+	
+	tp_message_mixin_implement_send_chat_state (obj, gadu_im_channel_send_chat_state);
 }
 
 static void
@@ -132,6 +199,7 @@ gadu_im_channel_get_interfaces (TpBaseChannel *chan)
 	
 	interfaces = TP_BASE_CHANNEL_CLASS (gadu_im_channel_parent_class)->get_interfaces (chan);
 	
+	g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE);
 	g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_MESSAGES);
 	g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_DESTROYABLE);
 	
@@ -198,6 +266,9 @@ destroyable_iface_init (gpointer iface, gpointer user_data)
 static void
 gadu_im_channel_init (GaduImChannel *self)
 {
+	self->priv = GADU_IM_CHANNEL_GET_PRIVATE (self);
+	
+	self->priv->last_type_length = 0;
 }
 
 static void
@@ -214,6 +285,8 @@ gadu_im_channel_class_init (GaduImChannelClass *klass)
 	base_class->get_interfaces = gadu_im_channel_get_interfaces;
 	base_class->close = gadu_im_channel_close;
 	base_class->fill_immutable_properties = gadu_im_channel_fill_immutable_properties;
+	
+	g_type_class_add_private (klass, sizeof (GaduImChannelPrivate));
 	
 	tp_message_mixin_init_dbus_properties (object_class);
 }

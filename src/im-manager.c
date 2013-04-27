@@ -30,6 +30,7 @@
 
 static void channel_manager_iface_init (gpointer, gpointer);
 static void message_received_cb (GaduConnection *connection, struct gg_event *evt, GaduImManager *self);
+static void typing_notification_cb (GaduConnection *connection, struct gg_event *evt, GaduImManager *self);
 
 G_DEFINE_TYPE_WITH_CODE (GaduImManager, gadu_im_manager, G_TYPE_OBJECT,
 	G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER, channel_manager_iface_init))
@@ -40,6 +41,7 @@ struct _GaduImManagerPrivate
 {
 	GaduConnection *connection;
 
+	// handle => channel map
 	GHashTable *channels;
 };
 
@@ -98,6 +100,8 @@ set_property (GObject *object,
 			self->priv->connection = g_value_get_object (value);
 			g_signal_connect (self->priv->connection, "message-received",
 					  G_CALLBACK (message_received_cb), self);
+			g_signal_connect (self->priv->connection, "typing-notification",
+					  G_CALLBACK (typing_notification_cb), self);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -250,6 +254,31 @@ message_received_cb (GaduConnection *connection, struct gg_event *evt, GaduImMan
 				 (char *) evt->event.msg.message);
 }
 
+static void
+typing_notification_cb (GaduConnection *connection,
+			struct gg_event *evt,
+			GaduImManager *self)
+{
+	TpBaseConnection *base_conn = TP_BASE_CONNECTION (connection);
+	TpHandleRepoIface *contact_repo = NULL;
+	TpHandle handle;
+	GaduImChannel *channel = NULL;
+	gchar *uid;
+	
+	uid = g_strdup_printf ("%d", evt->event.typing_notification.uin);
+	contact_repo = tp_base_connection_get_handles (base_conn, TP_HANDLE_TYPE_CONTACT);
+	handle = tp_handle_lookup (contact_repo, uid, NULL, NULL);
+	g_free (uid);
+	
+	if (handle == 0)
+		return;
+	
+	channel = g_hash_table_lookup (self->priv->channels, GUINT_TO_POINTER (handle));
+	
+	if (channel != NULL) {
+		gadu_im_channel_type_notify (channel, evt->event.typing_notification.length);
+	}
+}
 
 static void
 foreach_channel (TpChannelManager *manager,

@@ -34,11 +34,14 @@ G_BEGIN_DECLS
 
 typedef struct _GaduImChannel		GaduImChannel;
 typedef struct _GaduImChannelClass	GaduImChannelClass;
+typedef struct _GaduImChannelPrivate	GaduImChannelPrivate;
 
 struct _GaduImChannel
 {
 	TpBaseChannel	parent;
 	TpMessageMixin	message_mixin;
+	
+	GaduImChannelPrivate *priv;
 };
 
 struct _GaduImChannelClass
@@ -55,6 +58,8 @@ GaduImChannel	*gadu_im_channel_new		(GaduConnection *connection,
 void		 gadu_im_channel_receive	(GaduImChannel *self,
 						 time_t timestamp,
 			 			 const gchar *text);
+void		 gadu_im_channel_type_notify	(GaduImChannel *self,
+						 gint length);
 
 G_END_DECLS
 
