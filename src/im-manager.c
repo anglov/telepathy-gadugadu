@@ -182,7 +182,7 @@ new_im_channel (GaduImManager *self,
 	
 	g_return_val_if_fail (handle != 0, NULL);
 	
-	if (request_token == NULL) {
+	if (request_token != NULL) {
 		initiator = tp_base_connection_get_self_handle (TP_BASE_CONNECTION (self->priv->connection));
 	} else {
 		initiator = handle;
