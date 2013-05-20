@@ -391,7 +391,7 @@ gadu_connection_establish_connection (GaduConnection *self)
 	login_params.async = 1;
 	login_params.status = GG_STATUS_AVAIL;
 	login_params.encoding = GG_ENCODING_UTF8;
-	login_params.protocol_features = GG_FEATURE_TYPING_NOTIFICATION;
+	login_params.protocol_features = GG_FEATURE_TYPING_NOTIFICATION | GG_FEATURE_DND_FFC;
 	
 	gadu_debug ("Connecting (uin=%d)", login_params.uin);
 	
