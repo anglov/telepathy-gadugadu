@@ -8,7 +8,7 @@ manager_DATA = gadugadu.manager
 
 org.freedesktop.Telepathy.ConnectionManager.gadugadu.service: gadugadu.service.in \
 		Makefile
-	sed -e "s|@libexecdir@|$(libexecdir)|" $< > $@
+	sed -e "s|\@libexecdir\@|$(libexecdir)|" $< > $@
 
 CLEANFILES = $(service_DATA)
 
