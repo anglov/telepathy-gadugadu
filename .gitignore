@@ -16,5 +16,6 @@
 /stamp-h1
 /data/org.freedesktop.Telepathy.ConnectionManager.gadugadu.service
 /src/telepathy-gadugadu
+/INSTALL
 Makefile
 Makefile.in
