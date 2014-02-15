@@ -1,6 +1,6 @@
 /* -*- Mode: C; tab-width: 8; indent-tabs-mode: t; c-basic-offset: 8 -*-
  *
- * Copyright (C) 2013 Marcin Banasiak <marcin.banasiak@gmail.com>
+ * Copyright (C) 2013-2014 Marcin Banasiak <marcin.banasiak@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,8 +28,10 @@ main (int argc, char **argv)
 {
 	gint ret;
 
+#if !GLIB_CHECK_VERSION(2,35,0)
 	g_type_init ();
-	
+#endif
+
 	gadu_debug_init ();
 
 	if (g_getenv ("GADUGADU_VERBOSE") != NULL)
