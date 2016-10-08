@@ -78,7 +78,7 @@ enum
 	SIGNAL_MESSAGE_RECEIVED,
 	SIGNAL_USERLIST_RECEIVED,
 	SIGNAL_TYPING_NOTIFICATION,
-	
+
 	SIGNAL_LAST
 };
 
@@ -256,7 +256,7 @@ gadu_listener_cb (GIOChannel *source, GIOCondition cond, gpointer data)
 	GaduConnection *self = GADU_CONNECTION (data);
 
 	struct gg_event *e;
-	
+	while (1) {
 	e = gg_watch_fd (self->session);
 	
 	if (!e) {
@@ -269,6 +269,7 @@ gadu_listener_cb (GIOChannel *source, GIOCondition cond, gpointer data)
 	
 	switch (e->type) {
 		case GG_EVENT_NONE:
+		goto out;
 			break;
 		case GG_EVENT_MSG:
 			gadu_debug_full (GADU_DEBUG_FLAG_IM,
@@ -312,10 +313,20 @@ gadu_listener_cb (GIOChannel *source, GIOCondition cond, gpointer data)
 			gadu_error_full (GADU_DEBUG_FLAG_CONTACTS,
 					 "EVENT_USERLIST: Not implemented");
 			break;
+		case GG_EVENT_ACK:
+			gadu_debug_full (GADU_DEBUG_FLAG_IM,
+					 "EVENT_ACK: Received ACK uid=%d seq=%d status=%d",
+					 e->event.ack.recipient,
+					 e->event.ack.seq,
+					 e->event.ack.status);
+			break;
+		default:
+			gadu_error ("Recieved unexpected event: %d", e->type);
 	}
 	
 	gg_event_free (e);
-	
+	}
+	out:
 	return TRUE;
 }
 
@@ -347,7 +358,6 @@ login_cb (GIOChannel *source, GIOCondition cond, gpointer data)
 							  TP_CONNECTION_STATUS_REASON_REQUESTED);
 			
 			gg_notify(self->session, NULL, 0);
-			
 			self->priv->pinger_id = g_timeout_add_seconds (PING_INTERVAL, pinger, self);
 			self->priv->event_loop_id = g_io_add_watch (source, G_IO_IN | G_IO_ERR | G_IO_HUP,
 								    gadu_listener_cb, self);
