@@ -257,74 +257,75 @@ gadu_listener_cb (GIOChannel *source, GIOCondition cond, gpointer data)
 
 	struct gg_event *e;
 	while (1) {
-	e = gg_watch_fd (self->session);
-	
-	if (!e) {
-		gadu_error ("Network error: Unable to read from socket");
-		tp_base_connection_change_status (TP_BASE_CONNECTION (self),
-						  TP_CONNECTION_STATUS_DISCONNECTED,
-						  TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
-		return FALSE;
-	}
-	
-	switch (e->type) {
-		case GG_EVENT_NONE:
-		goto out;
-			break;
-		case GG_EVENT_MSG:
-			gadu_debug_full (GADU_DEBUG_FLAG_IM,
-					 "EVENT_MSG: Received message from uid=%d",
-					 e->event.msg.sender);
-			g_signal_emit (self, signals[SIGNAL_MESSAGE_RECEIVED], 0, e);
-			break;
-		case GG_EVENT_STATUS60:
-			gadu_debug_full (GADU_DEBUG_FLAG_PRESENCE,
-					 "EVENT_STATUS60: uid=%d sets status=%d",
-					 e->event.status60.uin, e->event.status60.status);
-			status_received_cb (self,
-					  e->event.status60.uin,
-					  e->event.status60.status,
-					  e->event.status60.descr);
-			break;
-		case GG_EVENT_TYPING_NOTIFICATION:
-			gadu_debug_full (GADU_DEBUG_FLAG_IM,
-					 "EVENT_TYPING_NOTIFICATION: uid=%d length=%d",
-					 e->event.typing_notification.uin,
-					 e->event.typing_notification.length);
-			g_signal_emit (self, signals[SIGNAL_TYPING_NOTIFICATION], 0, e);
-			break;
-		case GG_EVENT_NOTIFY60:
-			gadu_debug_full (GADU_DEBUG_FLAG_PRESENCE,
-					 "EVENT_NOTIFY60: Received contacts statuses");
-			notify_received_cb (self, e);
-			break;
-		case GG_EVENT_NOTIFY:
-			gadu_error_full (GADU_DEBUG_FLAG_PRESENCE,
-					 "EVENT_NOTIFY: Not implemented");
-			break;
-		case GG_EVENT_USERLIST100_REPLY:
-			if (e->event.userlist100_reply.type == GG_USERLIST100_REPLY_LIST) {
-				gadu_debug_full (GADU_DEBUG_FLAG_CONTACTS,
-					 	 "EVENT_USERLIST100_REPLY: Received contacts list");
-				g_signal_emit (self, signals[SIGNAL_USERLIST_RECEIVED], 0, e);
-			}
-			break;
-		case GG_EVENT_USERLIST:
-			gadu_error_full (GADU_DEBUG_FLAG_CONTACTS,
-					 "EVENT_USERLIST: Not implemented");
-			break;
-		case GG_EVENT_ACK:
-			gadu_debug_full (GADU_DEBUG_FLAG_IM,
-					 "EVENT_ACK: Received ACK uid=%d seq=%d status=%d",
-					 e->event.ack.recipient,
-					 e->event.ack.seq,
-					 e->event.ack.status);
-			break;
-		default:
-			gadu_error ("Recieved unexpected event: %d", e->type);
-	}
-	
-	gg_event_free (e);
+		e = gg_watch_fd (self->session);
+		
+		if (!e) {
+			gadu_error ("Network error: Unable to read from socket");
+			tp_base_connection_change_status (TP_BASE_CONNECTION (self),
+							  TP_CONNECTION_STATUS_DISCONNECTED,
+							  TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+			return FALSE;
+		}
+		
+		switch (e->type) {
+			case GG_EVENT_NONE:
+				gg_event_free (e);
+				goto out;
+				break;
+			case GG_EVENT_MSG:
+				gadu_debug_full (GADU_DEBUG_FLAG_IM,
+						 "EVENT_MSG: Received message from uid=%d",
+						 e->event.msg.sender);
+				g_signal_emit (self, signals[SIGNAL_MESSAGE_RECEIVED], 0, e);
+				break;
+			case GG_EVENT_STATUS60:
+				gadu_debug_full (GADU_DEBUG_FLAG_PRESENCE,
+						 "EVENT_STATUS60: uid=%d sets status=%d",
+						 e->event.status60.uin, e->event.status60.status);
+				status_received_cb (self,
+						  e->event.status60.uin,
+						  e->event.status60.status,
+						  e->event.status60.descr);
+				break;
+			case GG_EVENT_TYPING_NOTIFICATION:
+				gadu_debug_full (GADU_DEBUG_FLAG_IM,
+						 "EVENT_TYPING_NOTIFICATION: uid=%d length=%d",
+						 e->event.typing_notification.uin,
+						 e->event.typing_notification.length);
+				g_signal_emit (self, signals[SIGNAL_TYPING_NOTIFICATION], 0, e);
+				break;
+			case GG_EVENT_NOTIFY60:
+				gadu_debug_full (GADU_DEBUG_FLAG_PRESENCE,
+						 "EVENT_NOTIFY60: Received contacts statuses");
+				notify_received_cb (self, e);
+				break;
+			case GG_EVENT_NOTIFY:
+				gadu_error_full (GADU_DEBUG_FLAG_PRESENCE,
+						 "EVENT_NOTIFY: Not implemented");
+				break;
+			case GG_EVENT_USERLIST100_REPLY:
+				if (e->event.userlist100_reply.type == GG_USERLIST100_REPLY_LIST) {
+					gadu_debug_full (GADU_DEBUG_FLAG_CONTACTS,
+						 	 "EVENT_USERLIST100_REPLY: Received contacts list");
+					g_signal_emit (self, signals[SIGNAL_USERLIST_RECEIVED], 0, e);
+				}
+				break;
+			case GG_EVENT_USERLIST:
+				gadu_error_full (GADU_DEBUG_FLAG_CONTACTS,
+						 "EVENT_USERLIST: Not implemented");
+				break;
+			case GG_EVENT_ACK:
+				gadu_debug_full (GADU_DEBUG_FLAG_IM,
+						 "EVENT_ACK: Received ACK uid=%d seq=%d status=%d",
+						 e->event.ack.recipient,
+						 e->event.ack.seq,
+						 e->event.ack.status);
+				break;
+			default:
+				gadu_error ("Recieved unexpected event: %d", e->type);
+		}
+		
+		gg_event_free (e);
 	}
 	out:
 	return TRUE;
