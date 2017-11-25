@@ -322,7 +322,7 @@ gadu_listener_cb (GIOChannel *source, GIOCondition cond, gpointer data)
 						 e->event.ack.status);
 				break;
 			default:
-				gadu_error ("Recieved unexpected event: %d", e->type);
+				gadu_debug ("Recieved unexpected event: %d", e->type);
 		}
 		
 		gg_event_free (e);
